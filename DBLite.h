@@ -153,7 +153,7 @@ public:
 
         // Prepare the query
         //sqlite3_prepare(db, query, strlen(query), &stmt, NULL);
-        rc = sqlite3_exec(db, query, callback, 0, &zErrMsg);
+        rc = sqlite3_exec(db, query, NULL, 0, &zErrMsg);
 
         if( rc != SQLITE_OK ) {
             fprintf(stderr, "SQL error: %s\n", zErrMsg);
@@ -166,45 +166,64 @@ public:
 
     }
 
-    vector<string> getAccountDetails(char* cardNum, char* PIN) {
+    void updateAccountBalance(char* cardNum, char* Balance) {
+
+        char *query = NULL;
+
+        // Build a string using asprintf()
+        asprintf(&query, "UPDATE ACCOUNTS set Balance = '%s' where NUMBER='%s'", Balance, cardNum);
+
+        // Prepare the query
+        //sqlite3_prepare(db, query, strlen(query), &stmt, NULL);
+        rc = sqlite3_exec(db, query, callback, 0, &zErrMsg);
+        if( rc != SQLITE_OK ){
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        } else {
+            fprintf(stdout, "Balance added successfully\n");
+        }
+
+        // Test it
+        //rc = sqlite3_step(stmt);
+
+        // Finialize the usage
+        //sqlite3_finalize(stmt);
+
+        // Free up the query space
+        free(query);
+    }
+
+    vector<string> getAccountDetails(char* cardNum) {
 
         char *query = NULL;
         vector<string> valuesVector{};
 
         // Build a string using asprintf()
-        asprintf(&query, "SELECT NUMBER, PIN, BALANCE "
+        asprintf(&query, "SELECT NUMBER, BALANCE "
                          "FROM ACCOUNTS "
-                         "WHERE NUMBER AND PIN IN ('%s', '%s');", cardNum, PIN);
+                         "WHERE NUMBER IN ('%s');", cardNum);
 
         // Prepare the query
         int rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, nullptr);
-
-
-        if (rc != SQLITE_OK) {
-            fprintf(stderr, "SQL error: %s\n", zErrMsg);
-            sqlite3_free(zErrMsg);
-        } else {
-            fprintf(stdout, "You have successfully logged in!\n");
-            while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-                string accNum = (const char*)(sqlite3_column_text(stmt, 0));
-                string accPIN = (const char*)sqlite3_column_text(stmt, 1);
-                int accBalance = sqlite3_column_int(stmt, 2);
-                cout << accNum << " " << accPIN << " " << accBalance;
-                valuesVector.push_back(accNum);
-                valuesVector.push_back(accPIN);
-                valuesVector.push_back(to_string(accBalance));
-            }
-            sqlite3_finalize(stmt);
-            return valuesVector;
+        while (sqlite3_step(stmt) != SQLITE_DONE) {
+            string accNum = (const char *) (sqlite3_column_text(stmt, 0));
+            //string accPIN = (const char *) (sqlite3_column_text(stmt, 1));
+            int accBalance = sqlite3_column_int(stmt, 1);
+            valuesVector.push_back(accNum);
+            //valuesVector.push_back(accPIN);
+            valuesVector.push_back(to_string(accBalance));
         }
+        sqlite3_finalize(stmt);
+        return valuesVector;
+
     }
 
-    void deleteRow(char* ID) {
+    void deleteAccount(char* Number) {
 
         char *query = NULL;
 
         // Build a string using asprintf()
-        asprintf(&query, "DELETE FROM 'PEOPLE' WHERE ID = '%s';", ID);
+        asprintf(&query, "DELETE FROM ACCOUNTS WHERE NUMBER = '%s';", Number);
 
         // Prepare the query
         sqlite3_prepare(db, query, strlen(query), &stmt, NULL);
@@ -215,7 +234,7 @@ public:
         // Finialize the usage
         sqlite3_finalize(stmt);
 
-        // Free up the query space
+        cout << "Your account has been deleted";
         free(query);
 
     }

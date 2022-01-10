@@ -15,8 +15,10 @@ bool showMainMenuOptions(DBLite *sqldb);
 bool isCardNumberValid(const std::string& cardNo);
 void accountCreation(DBLite *sqldb);
 void accountLogin(DBLite *sqldb);
-void loggedAccountOptions(DBLite *sqldb);
-std::vector<std::string> createLoggedAccountObject(DBLite *sqldb, std::string login, std::string PIN);
+bool loggedAccountOptions(DBLite *sqldb, Account account);
+void addIncomeToTheAccount(DBLite *sqldb, Account account);
+void transferMoney(DBLite *sqldb, Account account);
+void closeCurrentAccount(DBLite *sqldb, Account account);
 
 int main() {
     DBLite sqldb;
@@ -36,6 +38,11 @@ void mainMenu(DBLite *sqldb){
 }
 
 bool showMainMenuOptions(DBLite *sqldb){
+    std::cout << "Message to all of our dear customers: "
+                 "Due to the recent inflation, the polish goverment decided to drop the złoty subunit called \"grosz\"."
+                 "From now on our bank is operating only on Polish Złoty without any decimal places. "
+                 "All of the balances on the accounts will be rounded down to the nearest integer. "
+                 "Sorry for the inconvenience\n\n";
     std::cout << "1. Create an account\n"
               << "2. Log into account\n"
               << "0. Exit\n";
@@ -118,21 +125,17 @@ void accountLogin(DBLite *sqldb){
     std::cout << "Enter your PIN: " << std::endl;
     std::cin >> userInputPIN;
     if (sqldb->checkCredentials(&userInputLogin[0], &userInputPIN[0])){
-        std::cout << "jest git" << std::endl;
-        createLoggedAccountObject(sqldb, userInputLogin, userInputPIN);
-        //loggedAccountOptions(sqldb);
+        std::vector<std::string> accountData = sqldb->getAccountDetails(&userInputLogin[0]);
+        Account account;
+        account.accountNum = accountData[0];
+        account.accountBalance = std::stol(accountData[1]);
+        loggedAccountOptions(sqldb, account);
     } else {
         std::cout << "Uh oh, wrong card number or PIN!" << std::endl;
     }
 }
 
-std::vector<std::string> createLoggedAccountObject(DBLite *sqldb, std::string login, std::string PIN){
-    std::vector<std::string> accountData = sqldb->getAccountDetails(&login[0], &PIN[0]);
-    for (string i: accountData)
-    std::cout << i << " ";
-}
-
-/*void loggedAccountOptions(DBLite *sqldb){
+bool loggedAccountOptions(DBLite *sqldb, Account account){
     std::cout << "1. Balance\n"
               << "2. Add income\n"
               << "3. Do transfer\n"
@@ -143,18 +146,70 @@ std::vector<std::string> createLoggedAccountObject(DBLite *sqldb, std::string lo
     std::cin >> chosenOption;
     switch (chosenOption){
         case 1:
-            accountCreation(sqldb);
+            std::cout << "Your balance is: " << account.accountBalance;
             break;
         case 2:
-            accountLogin(sqldb);
+            addIncomeToTheAccount(sqldb, account);
+            break;
+        case 3:
+            transferMoney(sqldb, account);
+            break;
+        case 4:
+            closeCurrentAccount(sqldb, account);
+            break;
+        case 5:
+            return 0;
             break;
         case 0:
-            return true;
             break;
         default:
             return false;
     }
-}*/
+}
+
+void addIncomeToTheAccount(DBLite *sqldb, Account account){
+    while(true){
+        long deposit;
+        std::cout << "Insert amount to deposit: ";
+        std::cin >> deposit;
+        if(deposit < 0){
+            std::cout << "amount cannot be less than 0" << std::endl;
+        } else {
+            account.accountBalance += deposit;
+            sqldb->updateAccountBalance(&account.accountNum[0],
+                        &std::to_string(account.accountBalance)[0]);
+            break;
+        }
+    }
+}
+
+void transferMoney(DBLite *sqldb, Account account){
+    while(true){
+        long moneyTransfer;
+        Account targetAccount;
+        std::cout << "Insert card number to which the money is to be transferred: ";
+        std::cin >> targetAccount.accountNum;
+        std::vector<std::string> accountData = sqldb->getAccountDetails(&targetAccount.accountNum[0]);
+        targetAccount.accountBalance = std::stol(accountData[1]);
+        std::cout << "Insert amount to transfer: ";
+        std::cin >> moneyTransfer;
+        if(moneyTransfer < 0){
+            std::cout << "amount cannot be less than 0" << std::endl;
+        } else {
+            account.accountBalance -= moneyTransfer;
+            sqldb->updateAccountBalance(&account.accountNum[0],
+                                        &std::to_string(account.accountBalance)[0]);
+            targetAccount.accountBalance += moneyTransfer;
+            sqldb->updateAccountBalance(&targetAccount.accountNum[0],
+                                        &std::to_string(targetAccount.accountBalance)[0]);
+            break;
+        }
+    }
+}
+
+void closeCurrentAccount(DBLite *sqldb, Account account){
+    sqldb->deleteAccount(&account.accountNum[0]);
+}
 
 void printLogo(){
     std::cout << "//////////////////////////////////////" << std::endl
