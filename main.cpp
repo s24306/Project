@@ -15,6 +15,8 @@ bool showMainMenuOptions(DBLite *sqldb);
 bool isCardNumberValid(const std::string& cardNo);
 void accountCreation(DBLite *sqldb);
 void accountLogin(DBLite *sqldb);
+void loggedAccountOptions(DBLite *sqldb);
+std::vector<std::string> createLoggedAccountObject(DBLite *sqldb, std::string login, std::string PIN);
 
 int main() {
     DBLite sqldb;
@@ -117,20 +119,42 @@ void accountLogin(DBLite *sqldb){
     std::cin >> userInputPIN;
     if (sqldb->checkCredentials(&userInputLogin[0], &userInputPIN[0])){
         std::cout << "jest git" << std::endl;
+        createLoggedAccountObject(sqldb, userInputLogin, userInputPIN);
+        //loggedAccountOptions(sqldb);
     } else {
         std::cout << "Uh oh, wrong card number or PIN!" << std::endl;
     }
 }
 
-/*cur.execute('SELECT number, pin FROM card WHERE number and pin in (?, ?)', (login, password))
-found = cur.fetchone()
-if found:
-print("You have successfully logged in!")
-print("Wrong card number or PIN!")
-login_number = login
-inside_account()
-else:
-print("Wrong card number or PIN!")*/
+std::vector<std::string> createLoggedAccountObject(DBLite *sqldb, std::string login, std::string PIN){
+    std::vector<std::string> accountData = sqldb->getAccountDetails(&login[0], &PIN[0]);
+    for (string i: accountData)
+    std::cout << i << " ";
+}
+
+/*void loggedAccountOptions(DBLite *sqldb){
+    std::cout << "1. Balance\n"
+              << "2. Add income\n"
+              << "3. Do transfer\n"
+              << "4. Close account\n"
+              << "5. Log out\n"
+              << "0. Exit\n";
+    unsigned int chosenOption;
+    std::cin >> chosenOption;
+    switch (chosenOption){
+        case 1:
+            accountCreation(sqldb);
+            break;
+        case 2:
+            accountLogin(sqldb);
+            break;
+        case 0:
+            return true;
+            break;
+        default:
+            return false;
+    }
+}*/
 
 void printLogo(){
     std::cout << "//////////////////////////////////////" << std::endl

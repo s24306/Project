@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstring>
 #include <sqlite3.h>
+#include <vector>
 
 using namespace std;
 
@@ -146,7 +147,9 @@ public:
         char *query = NULL;
 
         // Build a string using asprintf()
-        asprintf(&query, "SELECT NUMBER, PIN FROM ACCOUNTS WHERE NUMBER AND PIN IN ('%s', '%s');", cardNum, PIN);
+        asprintf(&query, "SELECT NUMBER, PIN "
+                         "FROM ACCOUNTS "
+                         "WHERE NUMBER AND PIN IN ('%s', '%s');", cardNum, PIN);
 
         // Prepare the query
         //sqlite3_prepare(db, query, strlen(query), &stmt, NULL);
@@ -155,12 +158,45 @@ public:
         if( rc != SQLITE_OK ) {
             fprintf(stderr, "SQL error: %s\n", zErrMsg);
             sqlite3_free(zErrMsg);
-            return 1;
-        } else {
-            fprintf(stdout, "Operation done successfully\n");
             return 0;
+        } else {
+            fprintf(stdout, "You have successfully logged in!\n");
+            return 1;
         }
 
+    }
+
+    vector<string> getAccountDetails(char* cardNum, char* PIN) {
+
+        char *query = NULL;
+        vector<string> valuesVector{};
+
+        // Build a string using asprintf()
+        asprintf(&query, "SELECT NUMBER, PIN, BALANCE "
+                         "FROM ACCOUNTS "
+                         "WHERE NUMBER AND PIN IN ('%s', '%s');", cardNum, PIN);
+
+        // Prepare the query
+        int rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, nullptr);
+
+
+        if (rc != SQLITE_OK) {
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        } else {
+            fprintf(stdout, "You have successfully logged in!\n");
+            while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+                string accNum = (const char*)(sqlite3_column_text(stmt, 0));
+                string accPIN = (const char*)sqlite3_column_text(stmt, 1);
+                int accBalance = sqlite3_column_int(stmt, 2);
+                cout << accNum << " " << accPIN << " " << accBalance;
+                valuesVector.push_back(accNum);
+                valuesVector.push_back(accPIN);
+                valuesVector.push_back(to_string(accBalance));
+            }
+            sqlite3_finalize(stmt);
+            return valuesVector;
+        }
     }
 
     void deleteRow(char* ID) {
