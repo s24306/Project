@@ -5,8 +5,9 @@
 #include "CustomerAccount.h"
 #include <cmath>
 #include <ctime>
-#include <sqlite3.h>
 #include "DBLite.h"
+#include <algorithm>
+#include "TickCount.h"
 
 
 void printLogo();
@@ -14,6 +15,7 @@ void mainMenu(DBLite *sqldb);
 bool showMainMenuOptions(DBLite *sqldb);
 bool isCardNumberValid(const std::string& cardNo);
 void accountCreation(DBLite *sqldb);
+std::string luhnAlgorithm(DBLite *sqldb);
 void accountLogin(DBLite *sqldb);
 bool loggedAccountOptions(DBLite *sqldb, Account account);
 void addIncomeToTheAccount(DBLite *sqldb, Account account);
@@ -38,10 +40,10 @@ void mainMenu(DBLite *sqldb){
 }
 
 bool showMainMenuOptions(DBLite *sqldb){
-    std::cout << "Message to all of our dear customers: "
-                 "Due to the recent inflation, the polish goverment decided to drop the złoty subunit called \"grosz\"."
-                 "From now on our bank is operating only on Polish Złoty without any decimal places. "
-                 "All of the balances on the accounts will be rounded down to the nearest integer. "
+    std::cout << "Message to all of our dear customers: \n"
+                 "Due to the recent inflation, the polish government decided to drop the zloty subunit called \"grosz\"."
+                 "\nFrom now on our bank is operating only on Polish Zloty without any decimal places.\n"
+                 "All of the balances on the accounts will be rounded down to the nearest integer.\n"
                  "Sorry for the inconvenience\n\n";
     std::cout << "1. Create an account\n"
               << "2. Log into account\n"
@@ -57,7 +59,6 @@ bool showMainMenuOptions(DBLite *sqldb){
             break;
         case 0:
             return true;
-            break;
         default:
             return false;
     }
@@ -73,15 +74,20 @@ std::string generatePIN(){
     return randomPIN;
 }
 
-std::string luhnAlgorithm(){
+std::string luhnAlgorithm(DBLite *sqldb){
+    std::vector<string> accountsNumbersVector = sqldb->getAllAccountsNumbers();
     while (true){
         std::string randomAccountNumber = "4";
-        srand(time(nullptr));
+        srand(GetTickCount());
         for (int i = 0; i < 15; i++){
             int randomNum = rand() % 10;
             randomAccountNumber.append(std::to_string(randomNum));
         }
-        if (isCardNumberValid(randomAccountNumber)){
+        std::cout << randomAccountNumber << endl;
+        if ((isCardNumberValid(randomAccountNumber))
+        && ((std::count(accountsNumbersVector.begin(),
+                      accountsNumbersVector.end(),
+                      randomAccountNumber)) == false)){
             return randomAccountNumber;
         }
     }
@@ -108,7 +114,8 @@ bool isCardNumberValid(const std::string& cardNo){
 
 void accountCreation(DBLite *sqldb){
     Account account;
-    account.accountNum = luhnAlgorithm();
+    std::cout << "c";
+    account.accountNum = luhnAlgorithm(sqldb);
     account.accountPIN = generatePIN();
     std::cout << "Your card has been created" << std::endl
               << "Your account number: " << account.accountNum << std::endl

@@ -218,6 +218,25 @@ public:
 
     }
 
+    vector<string> getAllAccountsNumbers() {
+
+        char *query = NULL;
+        vector<string> cardsVector{};
+
+        // Build a string using asprintf()
+        asprintf(&query, "SELECT * FROM ACCOUNTS");
+
+        // Prepare the query
+        int rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, nullptr);
+        while (sqlite3_step(stmt) != SQLITE_DONE) {
+            string accNum = (const char *) (sqlite3_column_text(stmt, 1));
+            cardsVector.push_back(accNum);
+        }
+        sqlite3_finalize(stmt);
+        return cardsVector;
+
+    }
+
     void deleteAccount(char* Number) {
 
         char *query = NULL;
