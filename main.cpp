@@ -11,6 +11,7 @@
 
 
 void printLogo();
+void printMessage();
 void mainMenu(DBLite *sqldb);
 bool showMainMenuOptions(DBLite *sqldb);
 bool isCardNumberValid(const std::string& cardNo);
@@ -21,13 +22,16 @@ bool loggedAccountOptions(DBLite *sqldb, Account account);
 void addIncomeToTheAccount(DBLite *sqldb, Account account);
 void transferMoney(DBLite *sqldb, Account account);
 void closeCurrentAccount(DBLite *sqldb, Account account);
+bool cardNumberExists(const std::vector<string>& list, const std::string& string);
+bool isNumber(const string& str);
 
 int main() {
     DBLite sqldb;
     sqldb.createTable();
     printLogo();
+    printMessage();
     mainMenu(&sqldb);
-    std::cout << "bye lol" << std::endl;
+    std::cout << "See you soon!" << std::endl;
     sqldb.closeDB();
     return 0;
 }
@@ -40,27 +44,29 @@ void mainMenu(DBLite *sqldb){
 }
 
 bool showMainMenuOptions(DBLite *sqldb){
-    std::cout << "Message to all of our dear customers: \n"
-                 "Due to the recent inflation, the polish government decided to drop the zloty subunit called \"grosz\"."
-                 "\nFrom now on our bank is operating only on Polish Zloty without any decimal places.\n"
-                 "All of the balances on the accounts will be rounded down to the nearest integer.\n"
-                 "Sorry for the inconvenience\n\n";
-    std::cout << "1. Create an account\n"
-              << "2. Log into account\n"
-              << "0. Exit\n";
-    unsigned int chosenOption;
-    std::cin >> chosenOption;
-    switch (chosenOption){
-        case 1:
-            accountCreation(sqldb);
-            break;
-        case 2:
-            accountLogin(sqldb);
-            break;
-        case 0:
-            return true;
-        default:
-            return false;
+    while(true){
+        std::cout << "1. Create an account\n"
+                  << "2. Log into account\n"
+                  << "0. Exit\n";
+        unsigned int chosenOption;
+        std::cin >> chosenOption;
+        if(cin.fail()){
+            std::cout << "Not only you cannot read, but also you cannot differentiate between numbers and letters???\n";
+            cin.clear();
+            cin.ignore(512, '\n');
+        }
+        switch (chosenOption) {
+            case 1:
+                accountCreation(sqldb);
+                break;
+            case 2:
+                accountLogin(sqldb);
+                break;
+            case 0:
+                return true;
+            default:
+                std::cout << "That's not a viable command, did you consider learning how to read???\n";
+        }
     }
 }
 
@@ -83,14 +89,15 @@ std::string luhnAlgorithm(DBLite *sqldb){
             int randomNum = rand() % 10;
             randomAccountNumber.append(std::to_string(randomNum));
         }
-        std::cout << randomAccountNumber << endl;
         if ((isCardNumberValid(randomAccountNumber))
-        && ((std::count(accountsNumbersVector.begin(),
-                      accountsNumbersVector.end(),
-                      randomAccountNumber)) == false)){
+            && !cardNumberExists(accountsNumbersVector, randomAccountNumber)){
             return randomAccountNumber;
         }
     }
+}
+
+bool cardNumberExists(const std::vector<string>& list, const std::string& string){
+    return std::count(list.begin(),list.end(),string);
 }
 
 bool isCardNumberValid(const std::string& cardNo){
@@ -114,63 +121,71 @@ bool isCardNumberValid(const std::string& cardNo){
 
 void accountCreation(DBLite *sqldb){
     Account account;
-    std::cout << "c";
     account.accountNum = luhnAlgorithm(sqldb);
     account.accountPIN = generatePIN();
     std::cout << "Your card has been created" << std::endl
               << "Your account number: " << account.accountNum << std::endl
               << "Your PIN: " << account.accountPIN << std::endl << std::endl;
     sqldb->insertData(&account.accountNum[0], &account.accountPIN[0]);
-    sqldb->showTable();
 }
 
 void accountLogin(DBLite *sqldb){
-    std::string userInputLogin;
-    std::string userInputPIN;
-    std::cout << "Enter your card number: " << std::endl;
-    std::cin >> userInputLogin;
-    std::cout << "Enter your PIN: " << std::endl;
-    std::cin >> userInputPIN;
-    if (sqldb->checkCredentials(&userInputLogin[0], &userInputPIN[0])){
-        std::vector<std::string> accountData = sqldb->getAccountDetails(&userInputLogin[0]);
-        Account account;
-        account.accountNum = accountData[0];
-        account.accountBalance = std::stol(accountData[1]);
-        loggedAccountOptions(sqldb, account);
-    } else {
-        std::cout << "Uh oh, wrong card number or PIN!" << std::endl;
+    while(true) {
+        std::string userInputLogin;
+        std::string userInputPIN;
+        std::cout << "Enter your card number: " << std::endl;
+        std::cin >> userInputLogin;
+        std::cout << "Enter your PIN: " << std::endl;
+        std::cin >> userInputPIN;
+        if (sqldb->checkCredentials(&userInputLogin[0], &userInputPIN[0])) {
+            std::vector<std::string> accountData = sqldb->getAccountDetails(&userInputLogin[0]);
+            Account account;
+            account.accountNum = accountData[0];
+            account.accountBalance = std::stol(accountData[1]);
+            std::cout << "You have successfully logged in!\n";
+            loggedAccountOptions(sqldb, account);
+            break;
+        } else {
+            std::cout << "Uh oh, wrong card number or PIN!" << std::endl;
+        }
     }
 }
 
 bool loggedAccountOptions(DBLite *sqldb, Account account){
-    std::cout << "1. Balance\n"
-              << "2. Add income\n"
-              << "3. Do transfer\n"
-              << "4. Close account\n"
-              << "5. Log out\n"
-              << "0. Exit\n";
-    unsigned int chosenOption;
-    std::cin >> chosenOption;
-    switch (chosenOption){
-        case 1:
-            std::cout << "Your balance is: " << account.accountBalance;
-            break;
-        case 2:
-            addIncomeToTheAccount(sqldb, account);
-            break;
-        case 3:
-            transferMoney(sqldb, account);
-            break;
-        case 4:
-            closeCurrentAccount(sqldb, account);
-            break;
-        case 5:
-            return 0;
-            break;
-        case 0:
-            break;
-        default:
-            return false;
+    while(true) {
+        std::vector<string> newBalance = sqldb->getAccountDetails(&account.accountNum[0]);
+        account.accountBalance = account.accountBalance = std::stol(newBalance[1]);
+        std::cout << "1. Balance\n"
+                  << "2. Add income\n"
+                  << "3. Do transfer\n"
+                  << "4. Close account\n"
+                  << "0. Log out\n";
+        unsigned int chosenOption;
+        std::cin >> chosenOption;
+        if(cin.fail()){
+            std::cout << "Not only you cannot read, but also you cannot differentiate between numbers and letters???\n";
+            cin.clear();
+            cin.ignore(512, '\n');
+        }
+        switch (chosenOption) {
+            case 1:
+                std::cout << "Your balance is: " << account.accountBalance << endl;
+                break;
+            case 2:
+                addIncomeToTheAccount(sqldb, account);
+                std::cout << "Balance added successfully\n";
+                break;
+            case 3:
+                transferMoney(sqldb, account);
+                break;
+            case 4:
+                closeCurrentAccount(sqldb, account);
+                return false;
+            case 0:
+                return false;
+            default:
+                std::cout << "That's not a viable command, did you consider learning how to read???\n";
+        }
     }
 }
 
@@ -194,14 +209,26 @@ void transferMoney(DBLite *sqldb, Account account){
     while(true){
         long moneyTransfer;
         Account targetAccount;
+        std::string targetNumber;
         std::cout << "Insert card number to which the money is to be transferred: ";
-        std::cin >> targetAccount.accountNum;
+        std::cin >> targetNumber;
+        if (!isNumber(targetNumber)){
+            std::cout << "This isn't really a number, is it?\n";
+        }
+        targetAccount.accountNum = targetNumber;
         std::vector<std::string> accountData = sqldb->getAccountDetails(&targetAccount.accountNum[0]);
         targetAccount.accountBalance = std::stol(accountData[1]);
         std::cout << "Insert amount to transfer: ";
         std::cin >> moneyTransfer;
+        if(cin.fail()){
+            std::cout << "Unfortunately you cannot transfer letters. And yes, we also would love to send the D.\n";
+            cin.clear();
+            cin.ignore(512, '\n');
+        }
         if(moneyTransfer < 0){
-            std::cout << "amount cannot be less than 0" << std::endl;
+            std::cout << "Amount cannot be less than 0" << std::endl;
+        } else if (moneyTransfer > account.accountBalance){
+            std::cout << "You don't have enough money! Try again.\n";
         } else {
             account.accountBalance -= moneyTransfer;
             sqldb->updateAccountBalance(&account.accountNum[0],
@@ -214,19 +241,35 @@ void transferMoney(DBLite *sqldb, Account account){
     }
 }
 
+bool isNumber(const string& str){
+    for (char const &c : str) {
+        if (std::isdigit(c) == 0) return false;
+    }
+    return true;
+}
+
 void closeCurrentAccount(DBLite *sqldb, Account account){
     sqldb->deleteAccount(&account.accountNum[0]);
 }
 
 void printLogo(){
-    std::cout << "//////////////////////////////////////" << std::endl
-              << "_______   _________    ___    ____________ ___   ___" << std::endl
-              << "|   ___ \\   _________    ___    ____________ ___   ___" << std::endl
-              << "|  |   | |    _________    ___    ____________ ___   ___" << std::endl
-              << "|  |___| |   _________    ___    ____________ ___   ___" << std::endl
-              << "|   ____/   _________    ___    ____________ ___   ___" << std::endl
-              << "|  |   _________    ___    ____________ ___   ___" << std::endl
-              << "|  |        _________    ___    ____________ ___   ___" << std::endl
-              << "|  |        _________    ___    ____________ ___   ___" << std::endl
-              << "//////////////////////////////////////" << std::endl << std::endl;
+    std::cout << "////////////////////////////////////////////////////////////////" << std::endl
+              << "_______       ________         __      ___________     __    __" << std::endl
+              << "|   ___ \\   |_______  |       /  \\    |____  _____|   |  | /  /" << std::endl
+              << "|  |   | |          | |      / /\\ \\       |  |        |  |/  /" << std::endl
+              << "|  |___| |          | |     / /  \\ \\      |  |        |     /" << std::endl
+              << "|   ____/           | |    / /____\\ \\     |  |        |    |" << std::endl
+              << "|  |         _      | |   /  ______  \\    |  |        |     \\" << std::endl
+              << "|  |        | |_____| |  / /        \\ \\   |  |        |  |\\  \\" << std::endl
+              << "|  |        |________/  / /          \\ \\  |  |        |  | \\  \\" << std::endl
+              << "////////////////////////////////////////////////////////////////" << std::endl << std::endl;
+}
+
+void printMessage() {
+    std::cout << "Message to all of our dear customers: \n"
+                 "Due to the recent inflation, the polish government decided to drop the zloty "
+                 "subunit called \"grosz\"."
+                 "\nFrom now on our bank is operating only on Polish Zloty without any decimal places.\n"
+                 "All of the balances on the accounts will be rounded down to the nearest integer.\n"
+                 "Sorry for the inconvenience\n\n";
 }
