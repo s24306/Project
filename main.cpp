@@ -1,10 +1,7 @@
 #include <iostream>
-#include <cstdio>
 #include <cstdlib>
 #include <string>
 #include "CustomerAccount.h"
-#include <cmath>
-#include <ctime>
 #include "DBLite.h"
 #include <algorithm>
 #include "TickCount.h"
@@ -142,11 +139,12 @@ void accountLogin(DBLite *sqldb){
             Account account;
             account.accountNum = accountData[0];
             account.accountBalance = std::stol(accountData[1]);
-            std::cout << "You have successfully logged in!\n";
+            std::cout << "You have successfully logged in!\n\n";
             loggedAccountOptions(sqldb, account);
             break;
         } else {
-            std::cout << "Uh oh, wrong card number or PIN!" << std::endl;
+            std::cout << "Uh oh, wrong card number or PIN!\n" << std::endl;
+            break;
         }
     }
 }
@@ -169,7 +167,7 @@ bool loggedAccountOptions(DBLite *sqldb, Account account){
         }
         switch (chosenOption) {
             case 1:
-                std::cout << "Your balance is: " << account.accountBalance << endl;
+                std::cout << "Your balance is: " << (unsigned long long int)account.accountBalance << endl << endl;
                 break;
             case 2:
                 addIncomeToTheAccount(sqldb, account);
@@ -191,7 +189,7 @@ bool loggedAccountOptions(DBLite *sqldb, Account account){
 
 void addIncomeToTheAccount(DBLite *sqldb, Account account){
     while(true){
-        long deposit;
+        unsigned long long int deposit;
         std::cout << "Insert amount to deposit: ";
         std::cin >> deposit;
         if(deposit < 0){

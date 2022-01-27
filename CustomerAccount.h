@@ -5,7 +5,7 @@
 
 struct Account{
     std::string accountNum;
-    double accountBalance {0};
+    unsigned long long int accountBalance {0};
     std::string accountPIN;
 };
 
